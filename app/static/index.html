@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triton Multi-Model Serving</title>
+<style>
+
+  :root{color-scheme:light;--bg:#f5f7fb;--panel:#fff;--panel2:#f1f5f9;--line:#e2e8f0;--text:#172033;--muted:#64748b;--accent:#2563eb;--accent2:#0ea5e9;--warn:#b45309;--bad:#dc2626;--radius:16px;--shadow:0 5px 20px rgba(15,23,42,.045)}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:space-between;padding:18px clamp(18px,4vw,44px);background:#fff;border-bottom:1px solid var(--line)}
+  h1{margin:0;font-size:clamp(18px,2vw,23px);font-weight:750;letter-spacing:-.035em}h1 small{display:block;margin-top:4px;color:var(--muted);font-size:12px;font-weight:450;letter-spacing:0}
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.pill{display:inline-flex;align-items:center;padding:7px 11px;border:1px solid var(--line);border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+  .pill.live{color:#15803d;background:#f0fdf4;border-color:#bbf7d0}.pill.demo{color:#a16207;background:#fffbeb;border-color:#fde68a}
+  .seg{display:inline-flex;gap:3px;padding:4px;border:1px solid var(--line);border-radius:10px;background:#f8fafc}.seg button{padding:7px 13px;border:0;border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-weight:650}.seg button.on{background:var(--accent);color:#fff}
+  main{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:18px;width:min(1360px,100%);margin:0 auto;padding:28px clamp(16px,3vw,36px) 56px}
+  section{min-width:0;padding:clamp(17px,2vw,23px);border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:var(--shadow)}section.wide{grid-column:1/-1}
+  h2{margin:0 0 5px;font-size:16px;font-weight:750;letter-spacing:-.025em}.sub{margin:0 0 18px;color:var(--muted);font-size:12.5px;line-height:1.6}
+  code{padding:2px 5px;border-radius:5px;background:#eff6ff;color:#1d4ed8;font-size:.92em}
+  .banner{display:none;grid-column:1/-1;padding:12px 15px;border:1px solid #fde68a;border-radius:11px;background:#fffbeb;color:#92400e;font-size:13px}
+  .row{display:grid;grid-template-columns:minmax(115px,175px) minmax(60px,1fr) 44px;gap:10px;align-items:center;margin:12px 0;font-size:12px}.row label{color:#475569}.row output{color:var(--accent);text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer}
+  button.btn{padding:8px 12px;border:1px solid #dbe3ee;border-radius:9px;background:#fff;color:#334155;cursor:pointer;font-size:12px;font-weight:650;transition:background .15s,border-color .15s}button.btn:hover{border-color:#93c5fd;background:#f8fbff}button.btn:disabled{opacity:.55;cursor:wait}button.primary{border-color:var(--accent);background:var(--accent);color:#fff}button.primary:hover{border-color:#1d4ed8;background:#1d4ed8}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin:15px 0}.result{margin-top:17px;padding:17px;border:1px solid #dbeafe;border-radius:12px;background:#f8fbff}
+  .bar{height:9px;overflow:hidden;border:1px solid #e2e8f0;border-radius:99px;background:#eaf0f7}.bar>i{display:block;height:100%;border-radius:99px;background:var(--accent2);transition:width .25s}
+  .big{margin-bottom:11px;font-size:clamp(20px,2vw,27px);font-weight:800;letter-spacing:-.035em;font-variant-numeric:tabular-nums}.meta{margin-top:8px;color:var(--muted);font-size:11.5px;line-height:1.55}
+  .digit-wrap{display:flex;flex-wrap:wrap;align-items:flex-start;gap:20px}canvas{display:block;width:min(100%,320px);height:auto;aspect-ratio:1;border:1px solid #dbe3ee;border-radius:11px;background:#080b12;cursor:crosshair;touch-action:none}
+  .probs{flex:1;min-width:190px}.prow{display:grid;grid-template-columns:18px minmax(60px,1fr) 48px;gap:8px;align-items:center;margin:8px 0;font-size:12px}.prow.best{color:#15803d;font-weight:800}.prow.best .bar>i{background:#16a34a}.prow span:last-child{color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+  .inline{display:flex;flex-wrap:wrap;align-items:end;gap:12px;margin-bottom:6px}.inline label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:11.5px}
+  select,input[type=number]{width:145px;padding:9px 10px;border:1px solid #dbe3ee;border-radius:9px;outline:none;background:#fff;color:var(--text);font-size:13px}select:focus,input:focus{border-color:#93c5fd}
+  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:17px}.tile{padding:15px;border:1px solid var(--line);border-radius:12px;background:#f8fafc}.tile b{display:block;margin-bottom:4px;font-size:23px;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums}.tile span{color:var(--muted);font-size:11px}
+  .hist{display:flex;align-items:flex-end;gap:4px;height:100px;margin-top:20px;padding:10px 8px 0;border-radius:9px 9px 0 0;background:#f1f5f9}.hist div{flex:1;min-height:2px;border-radius:4px 4px 0 0;background:linear-gradient(#38bdf8,#bae6fd)}
+  .axis{display:flex;justify-content:space-between;margin-top:7px;color:var(--muted);font-size:10.5px}
+  table{width:100%;margin-top:10px;border-collapse:collapse;font-size:12px}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--muted);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+  .chip{display:inline-block;margin:2px;padding:3px 7px;border:1px solid #dbeafe;border-radius:6px;background:#eff6ff;color:#1d4ed8;font-size:10.5px}.tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  pre{max-height:360px;overflow:auto;margin:0;padding:15px;border:1px solid var(--line);border-radius:11px;background:#f8fafc;color:#334155;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.err{color:var(--bad)}
+  @media(max-width:900px){main{grid-template-columns:1fr}section.wide{grid-column:auto}header{position:static}}
+  @media(max-width:560px){header{padding:16px;align-items:flex-start}.controls{width:100%;justify-content:space-between}main{gap:13px;padding:16px 12px 36px}section{padding:16px;overflow-x:auto}.row{grid-template-columns:100px minmax(50px,1fr) 36px;gap:7px;font-size:11px}.inline{align-items:stretch}.inline label,select,input[type=number]{width:100%}.inline label{flex:1 1 125px}.digit-wrap{gap:15px}canvas{width:100%;max-width:320px}.probs{flex-basis:100%}th,td{padding:8px 7px}}
+
+</style>
+</head>
+<body>
+<header>
+  <h1>High-Throughput Multi-Model Serving
+    <small>NVIDIA Triton Inference Server · ONNX · REST + gRPC · CPU instances · dynamic batching</small></h1>
+  <div class="controls">
+    <span id="modePill" class="pill demo">checking…</span>
+    <div class="seg" id="protoSeg">
+      <button data-p="rest" class="on">REST</button>
+      <button data-p="grpc">gRPC</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="banner" id="demoBanner">
+    Triton is not reachable, so predictions run through ONNX Runtime directly (demo mode).
+    Start the server with <code>docker compose up</code> to use real Triton — this page switches automatically.
+  </div>
+
+  <!-- Model 1: tabular churn -->
+  <section>
+    <h2>Model 1 · Customer churn predictor</h2>
+    <p class="sub">Tabular ONNX model <code>churn_model</code>. Move the sliders, the prediction updates live.</p>
+    <div id="sliders"></div>
+    <div class="btns" id="presets"></div>
+    <div class="result" id="churnResult">
+      <div class="big" id="churnPct">—</div>
+      <div class="bar"><i id="churnBar" style="width:0"></i></div>
+      <div class="meta" id="churnMeta"></div>
+    </div>
+  </section>
+
+  <!-- Model 2: image -->
+  <section>
+    <h2>Model 2 · Digit image classifier</h2>
+    <p class="sub">Image ONNX model <code>digit_image_model</code> (8×8 grayscale). Draw a digit, or load a real test image.</p>
+    <div class="digit-wrap">
+      <div>
+        <canvas id="cv" width="320" height="320"></canvas>
+        <div class="btns">
+          <button class="btn" id="clearBtn">Clear</button>
+          <button class="btn primary" id="sampleBtn">Random test image</button>
+        </div>
+        <div class="meta" id="sampleInfo"></div>
+      </div>
+      <div class="probs" id="probs"></div>
+    </div>
+    <div class="meta" id="digitMeta"></div>
+  </section>
+
+  <!-- Load test -->
+  <section class="wide">
+    <h2>Concurrent load test · both models at once</h2>
+    <p class="sub">Many simultaneous clients hit the same Triton server. Choose “Both” to serve the churn and image models in parallel.</p>
+    <div class="inline">
+      <label>Model
+        <select id="bModel"><option value="both">Both models</option><option value="churn">Churn only</option><option value="digit">Image only</option></select></label>
+      <label>Requests <input type="number" id="bN" value="400" min="1" max="5006"></label>
+      <label>Concurrency <input type="number" id="bC" value="32" min="1" max="128"></label>
+      <button class="btn primary" id="runBench">Run load test</button>
+      <span class="meta" id="bStatus"></span>
+    </div>
+    <div id="benchOut"></div>
+  </section>
+
+  <!-- Triton stats -->
+  <section>
+    <h2>Server statistics</h2>
+    <p class="sub">Read from Triton’s statistics endpoint. Average batch size &gt; 1 proves dynamic batching is merging requests.</p>
+    <div id="stats" class="meta">Waiting for data…</div>
+    <div class="btns"><button class="btn" id="refreshStats">Refresh</button></div>
+  </section>
+
+  <!-- Config viewer -->
+  <section>
+    <h2>Model configuration</h2>
+    <p class="sub">The <code>config.pbtxt</code> Triton loads for each model.</p>
+    <div class="tabs" id="cfgTabs">
+      <button class="btn primary" data-m="churn_model">churn_model</button>
+      <button class="btn" data-m="digit_image_model">digit_image_model</button>
+    </div>
+    <pre id="cfg">loading…</pre>
+  </section>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+let protocol = "rest", meta = null;
+
+async function api(path, body) {
+  const opt = body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {};
+  const r = await fetch(path, opt);
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+
+/* ---------------- header: status + protocol ---------------- */
+async function refreshStatus() {
+  try {
+    const s = await api("/api/status");
+    const live = s.mode === "triton";
+    const pill = $("#modePill");
+    pill.textContent = live ? "● Triton LIVE" : "● Demo mode (ONNX Runtime)";
+    pill.className = "pill " + (live ? "live" : "demo");
+    $("#demoBanner").style.display = live ? "none" : "block";
+  } catch (e) { $("#modePill").textContent = "gateway offline"; }
+}
+$("#protoSeg").addEventListener("click", e => {
+  if (!e.target.dataset.p) return;
+  protocol = e.target.dataset.p;
+  document.querySelectorAll("#protoSeg button").forEach(b => b.classList.toggle("on", b === e.target));
+  predictChurn(); predictDigit();
+});
+
+/* ---------------- churn model ---------------- */
+const vals = [];
+function buildChurn() {
+  const box = $("#sliders");
+  meta.churn.features.forEach((f, i) => {
+    vals[i] = f.default;
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `<label>${f.label}</label>
+      <input type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${f.default}">
+      <output>${f.default}</output>`;
+    const inp = row.querySelector("input"), out = row.querySelector("output");
+    inp.addEventListener("input", () => { vals[i] = +inp.value; out.textContent = inp.value; predictChurnDebounced(); });
+    box.appendChild(row);
+  });
+  const pr = $("#presets");
+  Object.entries(meta.churn.presets).forEach(([name, v]) => {
+    const b = document.createElement("button");
+    b.className = "btn"; b.textContent = name;
+    b.onclick = () => {
+      document.querySelectorAll("#sliders .row").forEach((row, i) => {
+        vals[i] = v[i]; row.querySelector("input").value = v[i]; row.querySelector("output").textContent = v[i];
+      });
+      predictChurn();
+    };
+    pr.appendChild(b);
+  });
+}
+async function predictChurn() {
+  try {
+    const r = await api("/api/predict/churn", {features: vals, protocol});
+    const pct = (r.churn_probability * 100).toFixed(1);
+    const risk = r.churn_probability < .3 ? "Low risk" : r.churn_probability < .6 ? "Medium risk" : "High risk";
+    $("#churnPct").textContent = `${pct}% churn probability · ${risk}`;
+    $("#churnBar").style.width = pct + "%";
+    $("#churnBar").style.background = r.churn_probability < .3 ? "var(--accent)" : r.churn_probability < .6 ? "var(--warn)" : "var(--bad)";
+    $("#churnMeta").textContent = `${r.protocol.toUpperCase()} · ${r.latency_ms} ms · served by ${r.mode}`;
+  } catch (e) { $("#churnMeta").innerHTML = `<span class="err">${e.message}</span>`; }
+}
+const predictChurnDebounced = debounce(predictChurn, 120);
+
+/* ---------------- digit model ---------------- */
+const CELL = 40, N = 8;
+const px = new Array(64).fill(0);
+const cv = $("#cv"), ctx = cv.getContext("2d");
+function drawGrid() {
+  ctx.clearRect(0, 0, 320, 320);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const v = Math.round(px[y * N + x] * 255);
+    ctx.fillStyle = `rgb(${v},${v},${v})`;
+    ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+  }
+  ctx.strokeStyle = "#222"; ctx.lineWidth = 1;
+  for (let i = 1; i < N; i++) {
+    ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, 320); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(320, i * CELL); ctx.stroke();
+  }
+}
+function paint(e) {
+  const r = cv.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left) / r.width * N), y = Math.floor((e.clientY - r.top) / r.height * N);
+  if (x < 0 || y < 0 || x >= N || y >= N) return;
+  px[y * N + x] = 1;
+  [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx, dy]) => {
+    const nx = x + dx, ny = y + dy;
+    if (nx >= 0 && ny >= 0 && nx < N && ny < N) px[ny * N + nx] = Math.max(px[ny * N + nx], 0.35);
+  });
+  drawGrid(); predictDigitDebounced();
+}
+let down = false;
+cv.addEventListener("pointerdown", e => { down = true; cv.setPointerCapture(e.pointerId); paint(e); $("#sampleInfo").textContent = ""; });
+cv.addEventListener("pointermove", e => { if (down) paint(e); });
+cv.addEventListener("pointerup", () => down = false);
+
+function buildProbs() {
+  $("#probs").innerHTML = Array.from({length: 10}, (_, d) =>
+    `<div class="prow" id="p${d}"><span>${d}</span><div class="bar"><i style="width:0"></i></div><span>0%</span></div>`).join("");
+}
+async function predictDigit() {
+  try {
+    const r = await api("/api/predict/digit", {pixels: px, protocol});
+    r.probabilities.forEach((p, d) => {
+      const row = $("#p" + d);
+      row.classList.toggle("best", d === r.digit);
+      row.querySelector("i").style.width = (p * 100).toFixed(1) + "%";
+      row.lastElementChild.textContent = (p * 100).toFixed(1) + "%";
+    });
+    $("#digitMeta").textContent = `Prediction: ${r.digit} · ${r.protocol.toUpperCase()} · ${r.latency_ms} ms · served by ${r.mode}`;
+  } catch (e) { $("#digitMeta").innerHTML = `<span class="err">${e.message}</span>`; }
+}
+const predictDigitDebounced = debounce(predictDigit, 120);
+$("#clearBtn").onclick = () => { px.fill(0); drawGrid(); $("#sampleInfo").textContent = ""; predictDigit(); };
+$("#sampleBtn").onclick = () => {
+  const s = meta.samples[Math.floor(Math.random() * meta.samples.length)];
+  s.pixels.forEach((v, i) => px[i] = v);
+  drawGrid(); $("#sampleInfo").textContent = `True label: ${s.label}`; predictDigit();
+};
+
+/* ---------------- load test ---------------- */
+$("#runBench").onclick = async () => {
+  const btn = $("#runBench"); btn.disabled = true; $("#bStatus").textContent = "running…";
+  try {
+    const r = await api("/api/benchmark", {
+      model: $("#bModel").value, protocol, requests: +$("#bN").value, concurrency: +$("#bC").value});
+    const o = r.overall, max = Math.max(...r.histogram.map(h => h.count), 1);
+    const per = Object.entries(r.per_model).map(([m, s]) =>
+      `<tr><td>${m}</td><td>${s.ok}</td><td>${s.p50_ms ?? "–"}</td><td>${s.p95_ms ?? "–"}</td><td>${s.p99_ms ?? "–"}</td><td>${s.errors}</td></tr>`).join("");
+    $("#benchOut").innerHTML = `
+      <div class="tiles">
+        <div class="tile"><b>${r.throughput_rps}</b><span>requests / second</span></div>
+        <div class="tile"><b>${o.p50_ms ?? "–"} ms</b><span>p50 latency</span></div>
+        <div class="tile"><b>${o.p95_ms ?? "–"} ms</b><span>p95 latency</span></div>
+        <div class="tile"><b>${o.p99_ms ?? "–"} ms</b><span>p99 latency</span></div>
+        <div class="tile"><b>${r.wall_seconds} s</b><span>total time · ${r.protocol.toUpperCase()} · ${r.mode}</span></div>
+        <div class="tile"><b>${o.errors}</b><span>errors</span></div>
+      </div>
+      ${r.first_error ? `<div class="meta err">First error: ${r.first_error}</div>` : ""}
+      <div class="hist">${r.histogram.map(h => `<div title="${h.from}–${h.to} ms: ${h.count}" style="height:${h.count / max * 100}%"></div>`).join("")}</div>
+      <div class="axis"><span>${r.histogram[0]?.from ?? 0} ms</span><span>latency distribution</span><span>${r.histogram.at(-1)?.to ?? 0} ms</span></div>
+      <table style="margin-top:14px"><tr><th>Model</th><th>OK</th><th>p50 ms</th><th>p95 ms</th><th>p99 ms</th><th>Errors</th></tr>${per}</table>`;
+    $("#bStatus").textContent = "";
+    loadStats();
+  } catch (e) { $("#bStatus").innerHTML = `<span class="err">${e.message}</span>`; }
+  btn.disabled = false;
+};
+
+/* ---------------- server stats ---------------- */
+async function loadStats() {
+  try {
+    const s = await api("/api/stats");
+    if (!s.available) {
+      $("#stats").textContent = "Statistics are only available when a real Triton server is connected" + (s.error ? " (" + s.error + ")" : ".");
+      return;
+    }
+    const rows = Object.entries(s.models).map(([m, v]) => `<tr><td>${m}</td><td>${v.inference_count}</td><td>${v.execution_count}</td>
+      <td><b>${v.avg_batch_size}</b></td><td>${v.avg_compute_ms}</td>
+      <td>${v.batches.map(b => `<span class="chip">bs ${b.batch_size} × ${b.count}</span>`).join("")}</td></tr>`).join("");
+    $("#stats").innerHTML = `<table><tr><th>Model</th><th>Inferences</th><th>Executions</th><th>Avg batch</th><th>Compute ms</th><th>Batch sizes</th></tr>${rows}</table>`;
+  } catch (e) { $("#stats").textContent = e.message; }
+}
+$("#refreshStats").onclick = loadStats;
+
+/* ---------------- config viewer ---------------- */
+async function showConfig(m) {
+  document.querySelectorAll("#cfgTabs button").forEach(b => b.classList.toggle("primary", b.dataset.m === m));
+  const r = await api("/api/config/" + m);
+  $("#cfg").textContent = r.text;
+}
+$("#cfgTabs").addEventListener("click", e => { if (e.target.dataset.m) showConfig(e.target.dataset.m); });
+
+/* ---------------- init ---------------- */
+(async function init() {
+  meta = await api("/api/meta");
+  buildChurn(); buildProbs(); drawGrid();
+  await refreshStatus();
+  predictChurn(); $("#sampleBtn").click(); showConfig("churn_model"); loadStats();
+  setInterval(refreshStatus, 4000);
+})();
+</script>
+</body>
+</html>
